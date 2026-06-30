@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const preferredRegion = 'cdg1'; // Force le déploiement sur Vercel à Paris pour éviter le blocage IP US de Binance
+
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const API_KEY = process.env.COINGECKO_API_KEY ?? '';
 
