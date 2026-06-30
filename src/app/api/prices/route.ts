@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const preferredRegion = 'cdg1'; // Force le déploiement sur Vercel à Paris pour éviter le blocage IP US de Binance
+export const dynamic = 'force-dynamic'; // Désactive le cache agressif du CDN Vercel
 
 const BINANCE = 'https://api1.binance.com/api/v3';
 const COINGECKO = 'https://api.coingecko.com/api/v3';
