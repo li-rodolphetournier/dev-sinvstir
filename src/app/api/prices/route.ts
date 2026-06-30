@@ -48,7 +48,7 @@ async function getEurRate(): Promise<number> {
   try {
     const res = await fetch(
       'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(5000), cache: 'no-store' }
     );
     if (!res.ok) throw new Error('rate api error');
     const data = await res.json();
@@ -74,7 +74,7 @@ async function fetchBinanceKlines(
   while (cursor < endMs) {
     const batchEnd = Math.min(cursor + MAX_LIMIT * DAY_MS, endMs);
     const url = `${BINANCE}/klines?symbol=${symbol}&interval=1d&startTime=${cursor}&endTime=${batchEnd}&limit=${MAX_LIMIT}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000), cache: 'no-store' });
     if (!res.ok) throw new Error(`Binance ${res.status} for ${symbol}`);
     const klines: unknown[][] = await res.json();
     for (const k of klines) {
@@ -83,6 +83,11 @@ async function fetchBinanceKlines(
 
     // Si on a reçu des données mais moins que la limite, on a atteint la fin (le temps présent)
     if (klines.length > 0 && klines.length < MAX_LIMIT) {
+      break;
+    }
+
+    // Si la crypto n'existait pas encore sur cette période, Binance retourne []
+    if (klines.length === 0) {
       break;
     }
 
@@ -100,7 +105,7 @@ async function fetchCoinGeckoPrices(
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (CG_KEY) headers['x-cg-demo-api-key'] = CG_KEY;
   const url = `${COINGECKO}/coins/${coinId}/market_chart/range?vs_currency=eur&from=${fromSec}&to=${toSec}`;
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(10_000), cache: 'no-store' });
   if (!res.ok) throw new Error(`CoinGecko ${res.status}`);
   const data: { prices?: [number, number][] } = await res.json();
   return data.prices ?? [];
