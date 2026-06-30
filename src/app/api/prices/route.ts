@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const preferredRegion = 'cdg1'; // Force le déploiement sur Vercel à Paris pour éviter le blocage IP US de Binance
 
-const BINANCE = 'https://api.binance.com/api/v3';
+const BINANCE = 'https://api1.binance.com/api/v3';
 const COINGECKO = 'https://api.coingecko.com/api/v3';
 const CG_KEY = process.env.COINGECKO_API_KEY ?? '';
 
@@ -156,6 +156,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ prices: stablePrices, source: 'stablecoin' });
   }
 
+  const errorLogs: string[] = [];
+
   // ── Binance (source principale) ──────────────────────────────────────────
   if (ticker) {
     // 1) Essai paire EUR
@@ -164,9 +166,11 @@ export async function GET(request: NextRequest) {
       if (prices.length > 0) {
         priceCache.set(cacheKey, { data: prices, expiry: Date.now() + CACHE_TTL });
         return NextResponse.json({ prices, source: 'binance_eur' });
+      } else {
+        errorLogs.push('Binance EUR: returned 0 items');
       }
-    } catch {
-      /* paire EUR indisponible, on essaie USDT */
+    } catch (err) {
+      errorLogs.push(`Binance EUR: ${(err as Error).message}`);
     }
 
     // 2) Paire USDT + conversion EUR
@@ -179,9 +183,11 @@ export async function GET(request: NextRequest) {
         const prices: [number, number][] = usdtPrices.map(([t, p]) => [t, p * eurRate]);
         priceCache.set(cacheKey, { data: prices, expiry: Date.now() + CACHE_TTL });
         return NextResponse.json({ prices, source: 'binance_usdt_converted' });
+      } else {
+        errorLogs.push('Binance USDT: returned 0 items');
       }
     } catch (err) {
-      console.warn(`[/api/prices] Binance failed for ${ticker}:`, err);
+      errorLogs.push(`Binance USDT: ${(err as Error).message}`);
     }
   }
 
@@ -191,13 +197,17 @@ export async function GET(request: NextRequest) {
     if (prices.length > 0) {
       priceCache.set(cacheKey, { data: prices, expiry: Date.now() + CACHE_TTL });
       return NextResponse.json({ prices, source: 'coingecko' });
+    } else {
+      errorLogs.push('CoinGecko: returned 0 items');
     }
   } catch (err) {
-    console.error(`[/api/prices] CoinGecko fallback failed:`, err);
+    errorLogs.push(`CoinGecko: ${(err as Error).message}`);
   }
 
   return NextResponse.json(
-    { error: `Aucune donnée historique disponible pour "${coinId}".` },
+    {
+      error: `Cette cryptomonnaie n'existait pas encore à la date de début sélectionnée. Détails techniques (Vercel): ${errorLogs.join(' | ')}`,
+    },
     { status: 404 }
   );
 }
